@@ -9,3 +9,4 @@ WORKDIR /app
 LABEL maintainer="pmaslanka@smok.co"
 
 CMD ["python", "-m", "seq_log_parser.run"]
+STOPSIGNAL SIGKILL

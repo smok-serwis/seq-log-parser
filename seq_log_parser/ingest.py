@@ -6,7 +6,7 @@ import requests
 import re
 import json
 from flask import Flask, request
-from flask_json import FlaskJSON
+from flask_json import FlaskJSON, as_json
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +25,18 @@ OVERWRITE_CONTENTS = os.environ.get('OVERWRITE_CONTENTS')
 
 if 'REGEX' in os.environ:
     REGEX_LIST = [re.compile(os.environ['REGEX'])]
+    if 'REGEX_PROPERTY' in os.environ:
+        CUSTOM_PROPERTIES = [os.environ.split('=', 1)]
 else:
     REGEX_LIST = []
+    CUSTOM_PROPERTIES = []
     for i in itertools.count(1):
         if f'REGEX{i}' in os.environ:
             REGEX_LIST.append(re.compile(os.environ[f'REGEX{i}']))
+            if f'REGEX_PROPERTY{i}' in os.environ:
+                CUSTOM_PROPERTIES.append(os.environ[f'REGEX_PROPERTY{i}'].split('=', 1))
+            else:
+                CUSTOM_PROPERTIES.append(None)
         else:
             break
 
@@ -38,26 +45,33 @@ def transform_entry(entry):
     """Note that this will modify the entry in-place"""
     message_field = entry[FIELD_TO_PARSE]
 
-    for regex in REGEX_LIST:
+    for regex, prop in zip(REGEX_LIST, CUSTOM_PROPERTIES):
         if match := regex.match(message_field):
 
             if 'Properties' not in entry:
                 entry['Properties'] = {}
 
-            for key, value in match.groupdict():
+            for key, value in match.groupdict().items():
                 entry['Properties'][key] = value
 
+            if prop is not None:
+                prop_key, prop_value = prop
+                entry['Properties'][prop_key] = prop_value
+
             if OVERWRITE_CONTENTS:
+                if 'MessageTemplate' in entry:
+                    entry['MessageTemplate'] = match.group(OVERWRITE_CONTENTS)
                 entry[FIELD_TO_PARSE] = match.group(OVERWRITE_CONTENTS)
 
             break
     else:
-        raise ValueError('No regex would match')
+        raise ValueError('No regex would match "%s"' % (message_field, ))
 
     return entry
 
 
-@app.route('/api/events/raw')
+@app.route('/api/events/raw', methods=['POST'])
+@as_json
 def ingest():
     # Try to obtain API key
     api_key_headers = request.headers.get('X-Seq-ApiKey')
@@ -67,10 +81,11 @@ def ingest():
     has_api_key = api_key is not None
 
     # Decode input
-    is_clef = 'clef' in request.args or request.headers.get('Content-Type') == 'application/vnd.serilog.clef'
+    is_clef = 'clef' in request.args or \
+              request.headers.get('Content-Type', '').startswith('application/vnd.serilog.clef')
     try:
         if is_clef:
-            entries = [json.loads(entry.strip()) for entry in request.data.split('\n') if entry.strip()]
+            entries = [json.loads(entry.strip()) for entry in request.data.decode('utf8').split('\n') if entry.strip()]
         else:
             data = request.get_json()
             entries = data['Events']
@@ -86,15 +101,26 @@ def ingest():
             new_entries.append(transform_entry(entry))
         except ValueError as e:
             logger.warning('Error processing entry', exc_info=e, extra={'entry': entry})
+            new_entries.append(entry)
 
     # Prepare headers
-    headers = {'Content-Type': 'application/json'}
+    headers = {'Content-Type': 'application/vnd.serilog.clef'}
     if has_api_key:
         headers['X-Seq-ApiKey'] = api_key
 
     # Send the message
     try:
-        resp = requests.post(SERVER_URL+'api/events/raw', json={'Events': new_entries}, headers=headers)
+        data = '\n'.join(json.dumps(entry) for entry in new_entries)
+        resp = requests.post(SERVER_URL+'api/events/raw', data=data, headers=headers)
         resp.raise_for_status()
     except requests.RequestException as e:
-        logger.error('Failed connecting the Seq server', exc_info=e)
+        try:
+            resp
+        except NameError:
+            logger.error('Failed connecting the Seq server', exc_info=e)
+        else:
+            logger.error(f'Got an error response from the Seq server: {resp.status_code} {resp.text}',
+                         exc_info=e)
+
+
+    return {}

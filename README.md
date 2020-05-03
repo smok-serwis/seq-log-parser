@@ -101,19 +101,31 @@ Now isn't that much nicer?
 The container is configured by following envs:
 
 | Env name           | Description                                                                             | Required? | Default |
-|--------------------|-----------------------------------------------------------------------------------------|-----------|---------|
-| SEQ_ADDRESS        | Address of the real Seq server                                                          | True      | N/A     |
-| REGEX              | Regex to use to match. It must be a valid Python regex with named groups                | True      | N/A     |
-| OVERWRITE_CONTENTS | If this env is defined, FIELD_TO_PARSE will be overwritten by value of this named group | False     | False   |
-| FIELD_TO_PARSE     | Name of the received field to parse against                                             | False     | @mt     |
-| BIND_ADDR          | Address to bind the listening port on                                                   | False     | 0.0.0.0 |
-| BIND_PORT          | Port to bind the listening port on                                                      | False     | 80      |
-| LOGGING_LEVEL      | Default Python logging level to configure                                               | False     | INFO    |
+|--------------------|------------------------------------------------------------------------------------------|-----------|---------|
+| SEQ_ADDRESS        | Address of the real Seq server                                                           | True      | N/A     |
+| REGEX              | Regex to use to match. It must be a valid Python regex with named groups                 | True      | N/A     |
+| OVERWRITE_CONTENTS | If this env is defined, the text will be overwritten by value of this named group        | False     | False   |
+| FIELD_TO_PARSE     | Name of the received field to parse against                                              | False     | @mt     |
+| BIND_ADDR          | Address to bind the listening port on                                                    | False     | 0.0.0.0 |
+| BIND_PORT          | Port to bind the listening port on                                                       | False     | 80      |
+| LOGGING_LEVEL      | Default Python logging level to configure                                                | False     | INFO    |
+| REGEX_PROPERTY     | A pair of key=value, a custom property to attach to entries                              | False     | _none_  |
 
 Take care for your regexes to be valid Python [named group regexes](https://docs.python.org/3.8/library/re.html#index-17).
 Don't forget about escaping the escape character if you're writing YAML for deployment!
 
 What matches given named group will be added to log's Properties.
+
+If you are using a list of regexes, and you want to add some kind of a property depending on which regex matched, 
+you can specify envs called `REGEX_PROPERTY`_i_ with _i_ being the number of your regex.
+You specify them in a format `key=value`.
+
+If you want to add a custom property but are using only a single regex, just name your env `REGEX_PROPERTY`
+and also specify it in form of `key=value`.
+
+If an entry doesn't match any of the regexes, it will be sent as-is.
+
+OVERWRITE_CONTENTS will update both the FIELD_TO_PARSE, as well as a `MessageTemplate` field, if it's present.
 
 # Multiple regexes
 
