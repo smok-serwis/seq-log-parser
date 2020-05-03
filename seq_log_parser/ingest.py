@@ -1,3 +1,4 @@
+# Copyright 2020 SMOK sp. z o. o.
 import itertools
 import os
 import logging

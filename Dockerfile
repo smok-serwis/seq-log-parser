@@ -6,4 +6,6 @@ RUN pip install -r /tmp/requirements.txt
 ADD seq_log_parser /app/seq_log_parser
 WORKDIR /app
 
+LABEL maintainer="pmaslanka@smok.co"
+
 CMD ["python", "-m", "seq_log_parser.run"]

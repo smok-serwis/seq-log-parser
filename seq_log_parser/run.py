@@ -1,3 +1,4 @@
+# Copyright 2020 SMOK sp. z o. o.
 import gevent.monkey
 gevent.monkey.patch_all(httplib=True)
 
