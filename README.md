@@ -64,7 +64,7 @@ services:
     environment:
       SEQ_ADDRESS: "http://seq"
       FIELD_TO_PARSE: "@mt"
-      REGEX: "(?P<source>.*): [(?P<time(\d+)\.(\d+))] (?P<interface>.*): (?P<message>.*)"
+      REGEX: "(?P<source>.*): \\[(?P<time(\\d+)\\.(\\d+))\] (?P<interface>.*): (?P<message>.*)"
       OVERWRITE_CONTENTS: "message"
   sqelf:
     image: datalust/sqelf
@@ -109,6 +109,11 @@ The container is configured by following envs:
 | BIND_ADDR          | Address to bind the listening port on                                                   | False     | 0.0.0.0 |
 | BIND_PORT          | Port to bind the listening port on                                                      | False     | 80      |
 | LOGGING_LEVEL      | Default Python logging level to configure                                               | False     | INFO    |
+
+Take care for your regexes to be valid Python [named group regexes](https://docs.python.org/3.8/library/re.html#index-17).
+Don't forget about escaping the escape character if you're writing YAML for deployment!
+
+What matches given named group will be added to log's Properties.
 
 # Multiple regexes
 
