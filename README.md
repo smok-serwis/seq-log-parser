@@ -67,7 +67,7 @@ services:
     environment:
       SEQ_ADDRESS: "http://seq"
       FIELD_TO_PARSE: "@mt"
-      REGEX: "(?P<source>.*): \\[(?P<time(\\d+)\\.(\\d+))\] (?P<interface>.*): (?P<message>.*)"
+      REGEX: "(?P<source>.*): \\[(?P<uptime(\\d+)\\.(\\d+))\] (?P<interface>.*): (?P<message>.*)"
       OVERWRITE_CONTENTS: "message"
   sqelf:
     image: datalust/sqelf
@@ -89,11 +89,13 @@ And now the log entry will look like this:
   "@m": "kernel: [341690.053545] veth2c1b259: renamed from eth0",
   "@i": "5dceda5b",
   "facility": "kern", 
-  "source": "kernel",
-  "time": "341690.053545", 
-  "interface": "341690.053545",
-  "message": "renamed from eth0"
-  "hostname": "hypervisor1",
+  "Properties": {
+    "source": "kernel",
+    "uptime": "341690.053545", 
+    "interface": "341690.053545",
+    "message": "renamed from eth0"
+  },
+  "hostname": "hypervisor1"
 }
 ```
 
