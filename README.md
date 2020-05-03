@@ -13,6 +13,9 @@ extract properties with the awesome power of regex
 and relay them straight back to the Seq server,
 even using the same API keys!
 
+Oh, it's available as a [Docker container](https://hub.docker.com/repository/docker/smokserwis/seq-log-parser)
+as well!
+
 # Rationale
 
 Consider such docker-compose file:
