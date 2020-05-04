@@ -3,5 +3,5 @@ requests
 werkzeug
 gevent
 flask_json
-satella
+satella>=2.7.22
 flask-satella-metrics
