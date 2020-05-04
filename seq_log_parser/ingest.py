@@ -80,6 +80,7 @@ def transform_entry(entry):
 
             break
     else:
+        matched_nothing.runtime(+1)
         raise ValueError('No regex would match "%s"' % (message_field, ))
 
     return entry
