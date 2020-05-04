@@ -7,11 +7,23 @@ import re
 import json
 from flask import Flask, request
 from flask_json import FlaskJSON, as_json
+from flask_satella_metrics.prometheus_exporter import PrometheusExporter
+from satella.instrumentation.metrics import getMetric
+
+matched_regexes = getMetric('matched.regex', 'counter')
+matched_nothing = getMetric('matched.nothing', 'counter')
+total_entries = getMetric('entries.total', 'counter')
+calls_made = getMetric('entries.calls', 'counter')
+
+seq_successes = getMetric('seq.successes', 'counter')
+seq_failures = getMetric('seq.failures', 'counter')
 
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 FlaskJSON(app)
+
+app.register_blueprint(PrometheusExporter())
 
 SERVER_URL = os.environ['SEQ_ADDRESS']
 if not SERVER_URL.endswith('/'):
@@ -44,9 +56,12 @@ else:
 def transform_entry(entry):
     """Note that this will modify the entry in-place"""
     message_field = entry[FIELD_TO_PARSE]
+    total_entries.runtime(+1)
 
     for regex, prop in zip(REGEX_LIST, CUSTOM_PROPERTIES):
         if match := regex.match(message_field):
+
+            matched_regexes.runtime(+1, regex=regex.pattern)
 
             if 'Properties' not in entry:
                 entry['Properties'] = {}
@@ -79,6 +94,8 @@ def ingest():
 
     api_key = api_key_headers or api_key_get
     has_api_key = api_key is not None
+
+    calls_made.runtime(+1)
 
     # Decode input
     is_clef = 'clef' in request.args or \
@@ -113,7 +130,9 @@ def ingest():
         data = '\n'.join(json.dumps(entry) for entry in new_entries)
         resp = requests.post(SERVER_URL+'api/events/raw', data=data, headers=headers)
         resp.raise_for_status()
+        seq_successes.runtime(+1)
     except requests.RequestException as e:
+        seq_failures.runtime(+1)
         try:
             resp
         except NameError:
@@ -121,6 +140,5 @@ def ingest():
         else:
             logger.error(f'Got an error response from the Seq server: {resp.status_code} {resp.text}',
                          exc_info=e)
-
 
     return {}

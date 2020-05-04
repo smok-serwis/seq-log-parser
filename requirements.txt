@@ -3,3 +3,5 @@ requests
 werkzeug
 gevent
 flask_json
+satella
+flask-satella-metrics

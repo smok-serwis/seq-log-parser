@@ -138,3 +138,16 @@ You will then use `REGEX_PROPERTY`_i_ to assign custom properties.
 
 You may not leave `REGEX_PROPERTY`_i_ blank. If you have say, `REGEX2` to which you don't
 need a custom property, just don't define `REGEX_PROPERTY2`.
+
+# Metrics
+
+On endpoint _/metrics_ there works a Prometheus exporter. Following metrics are available:
+
+| Name            | Labels                           | Meaning                                     | Type    |
+|-----------------|----------------------------------|---------------------------------------------|---------|
+| seq_successes   | none                             | Successful calls to Seq server              | counter |
+| seq_failures    | none                             | Failed calls to Seq server                  | counter |
+| matched.regex   | regex - the pattern that matched | Amount of entries that matched this regex   | counter |
+| matched.nothing | none                             | Amount of entries that matched no regex     | counter |
+| entries.total   | none                             | Total amount of entries processed           | counter |
+| entries.calls   | none                             | Amount of time that ingestion call was made | counter |
