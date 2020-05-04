@@ -92,7 +92,7 @@ And now the log entry will look like this:
   "Properties": {
     "source": "kernel",
     "uptime": "341690.053545", 
-    "interface": "341690.053545",
+    "interface": "veth2c1b259",
     "message": "renamed from eth0"
   },
   "hostname": "hypervisor1"
@@ -135,3 +135,7 @@ OVERWRITE_CONTENTS will update both the FIELD_TO_PARSE, as well as a `MessageTem
 # Multiple regexes
 
 If you input can be matched by multiple regexes, just specify them as environment variables REGEX1, REGEX2, REGEX3 instead of a single REGEX. 
+You will then use `REGEX_PROPERTY`_i_ to assign custom properties. 
+
+You may not leave `REGEX_PROPERTY`_i_ blank. If you have say, `REGEX2` to which you don't
+need a custom property, just don't define `REGEX_PROPERTY2`.
