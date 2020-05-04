@@ -66,18 +66,17 @@ services:
     image: smokserwis/seq-log-parser
     environment:
       SEQ_ADDRESS: "http://seq"
-      FIELD_TO_PARSE: "@mt"
       REGEX: "(?P<source>.*): \\[(?P<uptime(\\d+)\\.(\\d+))\] (?P<interface>.*): (?P<message>.*)"
       OVERWRITE_CONTENTS: "message"
-  sqelf:
-    image: datalust/sqelf
-    ports:
-      - published: 12201
-        target: 12201
-        protocol: udp
-        mode: ingress
+  squiflog:
+    image: datalust/squiflog
     environment:
       SEQ_ADDRESS: "http://seq-log-parser"
+    ports:
+      - published: 514
+        target: 514
+        protocol: udp
+        mode: ingress
 ```
 
 And now the log entry will look like this:
