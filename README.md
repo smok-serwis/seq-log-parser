@@ -104,18 +104,19 @@ Now isn't that much nicer?
 
 The container is configured by following envs:
 
-| Env name           | Description                                                                             | Required? | Default |
-|--------------------|------------------------------------------------------------------------------------------|-----------|---------|
-| SEQ_ADDRESS        | Address of the real Seq server                                                           | True      | N/A     |
-| REGEX              | Regex to use to match. It must be a valid Python regex with named groups                 | True      | N/A     |
-| OVERWRITE_CONTENTS | If this env is defined, the text will be overwritten by value of formatted field         | False     | False   |
-| FIELD_TO_PARSE     | Name of the received field to parse against                                              | False     | @mt     |
-| BIND_ADDR          | Address to bind the listening port on                                                    | False     | 0.0.0.0 |
-| BIND_PORT          | Port to bind the listening port on                                                       | False     | 80      |
-| LOGGING_LEVEL      | Default Python logging level to configure                                                | False     | INFO    |
-| REGEX_PROPERTY     | A pair of key=value, a custom property to attach to entries                              | False     | _none_  |
-| SEQ_LOG_LEVEL      | If this is defined, entries that will match regex will get assigned this severity level  | False     | _none_  |
-
+| Env name           | Description                                                                              | Required? | Default | Can postfix i? |
+|--------------------|------------------------------------------------------------------------------------------|-----------|---------|----------------|
+| SEQ_ADDRESS        | Address of the real Seq server                                                           | True      | N/A     | no             |
+| REGEX              | Regex to use to match. It must be a valid Python regex with named groups                 | True      | N/A     | yes            |
+| OVERWRITE_CONTENTS | If this env is defined, the text will be overwritten by value of formatted field         | False     | False   | yes            |
+| FIELD_TO_PARSE     | Name of the received field to parse against                                              | False     | @mt     | no             |
+| BIND_ADDR          | Address to bind the listening port on                                                    | False     | 0.0.0.0 | no             |
+| BIND_PORT          | Port to bind the listening port on                                                       | False     | 80      | no             |
+| LOGGING_LEVEL      | Default Python logging level to configure for seq-log-parser's own logs                  | False     | WARNING | no             |
+| REGEX_PROPERTY     | A pair of key=value, a custom property to attach to entries                              | False     | _none_  | yes            |
+| SEQ_LOG_LEVEL      | If this is defined, entries that will match regex will get assigned this severity level  | False     | _none_  | yes            |
+| STORE_IN_ENTRY     | If this is set to `True`, the message's body will be updated instead of it's Properties  | False     | False   | yes            |
+    
 Take care for your regexes to be valid Python [named group regexes](https://docs.python.org/3.8/library/re.html#index-17).
 Don't forget about escaping the escape character if you're writing YAML for deployment!
 
@@ -134,6 +135,9 @@ OVERWRITE_CONTENTS will update both the FIELD_TO_PARSE, as well as a `MessageTem
 
 OVERWRITE_CONTENTS needs to be specified in a Python format string like:
 
+Please note that if you enable STORE_IN_ENTRY then custom properties handled by _REGEX_PROPERTY_ will be 
+added to entry's body, and not it's Properties! 
+
 ```python
 {message} {url}
 ```
@@ -141,6 +145,11 @@ OVERWRITE_CONTENTS needs to be specified in a Python format string like:
 Then, it refers to the names of the fields to construct a new message.
 
 # Multiple regexes
+
+Please note that regex matching will be done in order you specify them.
+
+All variables detailed beforehand that have the property _Can postfix i_ can be postfixed with a natural number.
+They will relate then only to that regex
 
 If you input can be matched by multiple regexes, just specify them as environment variables REGEX1, REGEX2, REGEX3 instead of a single REGEX. 
 You will then use `REGEX_PROPERTY`_i_ to assign custom properties. 

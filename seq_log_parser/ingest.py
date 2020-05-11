@@ -46,14 +46,21 @@ if 'REGEX' in os.environ:
         SEQ_LOG_LEVEL = [os.environ['SEQ_LOG_LEVEL']]
     else:
         SEQ_LOG_LEVEL = [None]
+        if 'STORE_IN_ENTRY' in os.environ:
+            STORE_IN_ENTRY = [os.environ['STORE_IN_ENTRY'] == 'True']
+        else:
+            STORE_IN_ENTRY = [False]
 else:
     REGEX_LIST = []
     CUSTOM_PROPERTIES = []
     OVERWRITE_WITH = []
     SEQ_LOG_LEVEL = []
+    STORE_IN_ENTRY = []
     for i in itertools.count(1):
         if f'REGEX{i}' in os.environ:
-            REGEX_LIST.append(re.compile(os.environ[f'REGEX{i}']))
+            regex = os.environ[f'REGEX{i}']
+            logger.info(f'Loading regex {repr(regex)}')
+            REGEX_LIST.append(re.compile(regex))
             if f'REGEX_PROPERTY{i}' in os.environ:
                 CUSTOM_PROPERTIES.append(os.environ[f'REGEX_PROPERTY{i}'].split('=', 1))
             else:
@@ -72,6 +79,14 @@ else:
                 SEQ_LOG_LEVEL.append(os.environ[f'SEQ_LOG_LEVEL{i}'])
             else:
                 SEQ_LOG_LEVEL.append(None)
+
+            if 'STORE_IN_ENTRY' in os.environ:
+                STORE_IN_ENTRY.append(os.environ['STORE_IN_ENTRY'] == 'True')
+            elif f'STORE_IN_ENTRY{i}' in os.environ:
+                STORE_IN_ENTRY.append(os.environ[f'STORE_IN_ENTRY{i}'] == 'True')
+            else:
+                STORE_IN_ENTRY = [False]
+
         else:
             break
 
@@ -80,21 +95,28 @@ def transform_entry(entry):
     """Note that this will modify the entry in-place"""
     message_field = entry[FIELD_TO_PARSE]
     total_entries.runtime(+1)
-
-    for regex, prop, overwrite_with, level_to in zip(REGEX_LIST, CUSTOM_PROPERTIES, OVERWRITE_WITH, SEQ_LOG_LEVEL):
+    i = 0
+    for regex, prop, overwrite_with, level_to, store_in_entry in zip(REGEX_LIST, CUSTOM_PROPERTIES, OVERWRITE_WITH, SEQ_LOG_LEVEL, STORE_IN_ENTRY):
+        i += 1
         if match := regex.match(message_field):
 
             matched_regexes.runtime(+1, regex=regex.pattern)
 
-            if 'Properties' not in entry:
+            if 'Properties' not in entry and not store_in_entry:
                 entry['Properties'] = {}
 
             for key, value in match.groupdict().items():
-                entry['Properties'][key] = value
+                if store_in_entry:
+                    entry[key] = value
+                else:
+                    entry['Properties'][key] = value
 
             if prop is not None:
                 prop_key, prop_value = prop
-                entry['Properties'][prop_key] = prop_value
+                if store_in_entry:
+                    entry[prop_key] = prop_value
+                else:
+                    entry['Properties'][prop_key] = prop_value
 
             if overwrite_with:
                 fmt = overwrite_with.format(**match.groupdict())
@@ -117,7 +139,7 @@ def transform_entry(entry):
         matched_nothing.runtime(+1)
         raise ValueError('No regex would match "%s"' % (message_field, ))
 
-    logger.debug(f'Successfully processed entry {entry}')
+    logger.debug(f'Successfully processed entry {entry}, matched regex {i}')
 
     return entry
 
