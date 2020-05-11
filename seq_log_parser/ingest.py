@@ -94,6 +94,8 @@ def transform_entry(entry):
         matched_nothing.runtime(+1)
         raise ValueError('No regex would match "%s"' % (message_field, ))
 
+    logger.debug(f'Successfully processed entry {entry}')
+
     return entry
 
 
@@ -123,7 +125,6 @@ def ingest():
         logger.warning('Invalid payload, type was %s', 'clef' if is_clef else 'json',
                        exc_info=e,
                        extra={'payload': request.data})
-
     new_entries = []
     for entry in entries:
         try:
