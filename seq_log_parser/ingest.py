@@ -129,7 +129,7 @@ def ingest():
         try:
             new_entries.append(transform_entry(entry))
         except ValueError as e:
-            logger.warning('Error processing entry', exc_info=e, extra={'entry': entry})
+            logger.info('Error processing entry %s"', entry)
             new_entries.append(entry)
 
     # Prepare headers
