@@ -108,7 +108,7 @@ The container is configured by following envs:
 |--------------------|------------------------------------------------------------------------------------------|-----------|---------|
 | SEQ_ADDRESS        | Address of the real Seq server                                                           | True      | N/A     |
 | REGEX              | Regex to use to match. It must be a valid Python regex with named groups                 | True      | N/A     |
-| OVERWRITE_CONTENTS | If this env is defined, the text will be overwritten by value of this named group        | False     | False   |
+| OVERWRITE_CONTENTS | If this env is defined, the text will be overwritten by value of formatted field         | False     | False   |
 | FIELD_TO_PARSE     | Name of the received field to parse against                                              | False     | @mt     |
 | BIND_ADDR          | Address to bind the listening port on                                                    | False     | 0.0.0.0 |
 | BIND_PORT          | Port to bind the listening port on                                                       | False     | 80      |
@@ -131,6 +131,14 @@ If an entry doesn't match any of the regexes, it will be sent as-is.
 
 OVERWRITE_CONTENTS will update both the FIELD_TO_PARSE, as well as a `MessageTemplate` field, if it's present.
 
+OVERWRITE_CONTENTS needs to be specified in a Python format string like:
+
+```python
+{message} {url}
+```
+
+Then, it refers to the names of the fields to construct a new message.
+
 # Multiple regexes
 
 If you input can be matched by multiple regexes, just specify them as environment variables REGEX1, REGEX2, REGEX3 instead of a single REGEX. 
@@ -138,6 +146,8 @@ You will then use `REGEX_PROPERTY`_i_ to assign custom properties.
 
 You may not leave `REGEX_PROPERTY`_i_ blank. If you have say, `REGEX2` to which you don't
 need a custom property, just don't define `REGEX_PROPERTY2`.
+
+You can do the same with `OVERWRITE_CONTENTS`. Note that if only `OVERWRITE_CONTENTS` is set, it will apply to all regexes!
 
 # Metrics
 

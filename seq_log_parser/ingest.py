@@ -32,16 +32,19 @@ if not SERVER_URL.endswith('/'):
 
 FIELD_TO_PARSE = os.environ.get('FIELD_TO_PARSE', '@mt')
 
-OVERWRITE_CONTENTS = os.environ.get('OVERWRITE_CONTENTS')
-
 
 if 'REGEX' in os.environ:
     REGEX_LIST = [re.compile(os.environ['REGEX'])]
     if 'REGEX_PROPERTY' in os.environ:
         CUSTOM_PROPERTIES = [os.environ.split('=', 1)]
+    if 'OVERWRITE_CONTENTS' in os.environ:
+        OVERWRITE_WITH = [os.environ['OVERWRITE_CONTENTS']]
+    else:
+        OVERWRITE_WITH = [None]
 else:
     REGEX_LIST = []
     CUSTOM_PROPERTIES = []
+    OVERWRITE_WITH = []
     for i in itertools.count(1):
         if f'REGEX{i}' in os.environ:
             REGEX_LIST.append(re.compile(os.environ[f'REGEX{i}']))
@@ -49,6 +52,13 @@ else:
                 CUSTOM_PROPERTIES.append(os.environ[f'REGEX_PROPERTY{i}'].split('=', 1))
             else:
                 CUSTOM_PROPERTIES.append(None)
+
+            if 'OVERWRITE_CONTENTS' in os.environ:
+                OVERWRITE_WITH.append(os.environ['OVERWRITE_CONTENTS'])
+            elif f'OVERWRITE_CONTENTS{i}' in os.environ:
+                OVERWRITE_WITH.append(os.environ[f'OVERWRITE_WITH{i}'])
+            else:
+                OVERWRITE_WITH.append(None)
         else:
             break
 
@@ -58,7 +68,7 @@ def transform_entry(entry):
     message_field = entry[FIELD_TO_PARSE]
     total_entries.runtime(+1)
 
-    for regex, prop in zip(REGEX_LIST, CUSTOM_PROPERTIES):
+    for regex, prop, overwrite_with in zip(REGEX_LIST, CUSTOM_PROPERTIES, OVERWRITE_WITH):
         if match := regex.match(message_field):
 
             matched_regexes.runtime(+1, regex=regex.pattern)
@@ -73,10 +83,11 @@ def transform_entry(entry):
                 prop_key, prop_value = prop
                 entry['Properties'][prop_key] = prop_value
 
-            if OVERWRITE_CONTENTS:
+            if overwrite_with:
+                fmt = overwrite_with.format(**match.groupdict())
                 if 'MessageTemplate' in entry:
-                    entry['MessageTemplate'] = match.group(OVERWRITE_CONTENTS)
-                entry[FIELD_TO_PARSE] = match.group(OVERWRITE_CONTENTS)
+                    entry['MessageTemplate'] = fmt
+                entry[FIELD_TO_PARSE] = fmt
 
             break
     else:
