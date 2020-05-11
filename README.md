@@ -114,6 +114,7 @@ The container is configured by following envs:
 | BIND_PORT          | Port to bind the listening port on                                                       | False     | 80      |
 | LOGGING_LEVEL      | Default Python logging level to configure                                                | False     | INFO    |
 | REGEX_PROPERTY     | A pair of key=value, a custom property to attach to entries                              | False     | _none_  |
+| SEQ_LOG_LEVEL      | If this is defined, entries that will match regex will get assigned this severity level  | False     | _none_  |
 
 Take care for your regexes to be valid Python [named group regexes](https://docs.python.org/3.8/library/re.html#index-17).
 Don't forget about escaping the escape character if you're writing YAML for deployment!
@@ -148,6 +149,11 @@ You may not leave `REGEX_PROPERTY`_i_ blank. If you have say, `REGEX2` to which 
 need a custom property, just don't define `REGEX_PROPERTY2`.
 
 You can do the same with `OVERWRITE_CONTENTS`. Note that if only `OVERWRITE_CONTENTS` is set, it will apply to all regexes!
+
+You can do the same with `SEQ_LOG_LEVEL`, just specify a Python format string referring to the extracted properties.
+It will update Seq's field `@l`. If you got multiple regexes, just specify `SEQ_LOG_LEVEL`_i_.
+
+Note that the value of `SEQ_LOG_LEVEL` will be cast to uppercase!
 
 # Metrics
 

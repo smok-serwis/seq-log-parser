@@ -29,6 +29,7 @@ SERVER_URL = os.environ['SEQ_ADDRESS']
 if not SERVER_URL.endswith('/'):
     SERVER_URL = SERVER_URL + '/'
 
+SEQ_LOG_LEVEL_FIELDS = {'@L', '@l', '@Level'}
 
 FIELD_TO_PARSE = os.environ.get('FIELD_TO_PARSE', '@mt')
 
@@ -41,10 +42,15 @@ if 'REGEX' in os.environ:
         OVERWRITE_WITH = [os.environ['OVERWRITE_CONTENTS']]
     else:
         OVERWRITE_WITH = [None]
+    if 'SEQ_LOG_LEVEL' in os.environ:
+        SEQ_LOG_LEVEL = [os.environ['SEQ_LOG_LEVEL']]
+    else:
+        SEQ_LOG_LEVEL = [None]
 else:
     REGEX_LIST = []
     CUSTOM_PROPERTIES = []
     OVERWRITE_WITH = []
+    SEQ_LOG_LEVEL = []
     for i in itertools.count(1):
         if f'REGEX{i}' in os.environ:
             REGEX_LIST.append(re.compile(os.environ[f'REGEX{i}']))
@@ -59,6 +65,13 @@ else:
                 OVERWRITE_WITH.append(os.environ[f'OVERWRITE_CONTENTS{i}'])
             else:
                 OVERWRITE_WITH.append(None)
+
+            if 'SEQ_LOG_LEVEL' in os.environ:
+                SEQ_LOG_LEVEL.append(os.environ['SEQ_LOG_LEVEL'])
+            elif f'SEQ_LOG_LEVEL{i}' in os.environ:
+                SEQ_LOG_LEVEL.append(os.environ[f'SEQ_LOG_LEVEL{i}'])
+            else:
+                SEQ_LOG_LEVEL.append(None)
         else:
             break
 
@@ -68,7 +81,7 @@ def transform_entry(entry):
     message_field = entry[FIELD_TO_PARSE]
     total_entries.runtime(+1)
 
-    for regex, prop, overwrite_with in zip(REGEX_LIST, CUSTOM_PROPERTIES, OVERWRITE_WITH):
+    for regex, prop, overwrite_with, level_to in zip(REGEX_LIST, CUSTOM_PROPERTIES, OVERWRITE_WITH, SEQ_LOG_LEVEL):
         if match := regex.match(message_field):
 
             matched_regexes.runtime(+1, regex=regex.pattern)
@@ -88,6 +101,16 @@ def transform_entry(entry):
                 if 'MessageTemplate' in entry:
                     entry['MessageTemplate'] = fmt
                 entry[FIELD_TO_PARSE] = fmt
+
+            if level_to:
+                # Remove all existing levels
+                for field in SEQ_LOG_LEVEL_FIELDS:
+                    if field in entry:
+                        del entry[field]
+
+                # Assign new level
+                level = level_to.format(**match.groupdict())
+                entry['@l'] = level.upper()
 
             break
     else:
