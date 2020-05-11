@@ -56,7 +56,7 @@ else:
             if 'OVERWRITE_CONTENTS' in os.environ:
                 OVERWRITE_WITH.append(os.environ['OVERWRITE_CONTENTS'])
             elif f'OVERWRITE_CONTENTS{i}' in os.environ:
-                OVERWRITE_WITH.append(os.environ[f'OVERWRITE_WITH{i}'])
+                OVERWRITE_WITH.append(os.environ[f'OVERWRITE_CONTENTS{i}'])
             else:
                 OVERWRITE_WITH.append(None)
         else:
