@@ -14,7 +14,7 @@ matched_regexes = getMetric('matched.regex', 'counter')
 matched_nothing = getMetric('matched.nothing', 'counter')
 total_entries = getMetric('entries.total', 'counter')
 calls_made = getMetric('entries.calls', 'counter')
-
+entries_dropped = getMetric('entries.dropped', 'counter')
 seq_successes = getMetric('seq.successes', 'counter')
 seq_failures = getMetric('seq.failures', 'counter')
 
@@ -34,61 +34,48 @@ SEQ_LOG_LEVEL_FIELDS = {'@L', '@l', '@Level'}
 FIELD_TO_PARSE = os.environ.get('FIELD_TO_PARSE', '@mt')
 
 
+def generate_item_for(j: int, env_name: str, env_matcher=lambda x: x, default=None):
+    if env_name in os.environ:
+        return env_matcher(os.environ[env_name])
+    elif f'{env_name}{j}' in os.environ:
+        return env_matcher(os.environ[f'{env_name}{j}'])
+    else:
+        return default
+
+
 if 'REGEX' in os.environ:
-    REGEX_LIST = [re.compile(os.environ['REGEX'])]
-    if 'REGEX_PROPERTY' in os.environ:
-        CUSTOM_PROPERTIES = [os.environ.split('=', 1)]
-    if 'OVERWRITE_CONTENTS' in os.environ:
-        OVERWRITE_WITH = [os.environ['OVERWRITE_CONTENTS']]
-    else:
-        OVERWRITE_WITH = [None]
-    if 'SEQ_LOG_LEVEL' in os.environ:
-        SEQ_LOG_LEVEL = [os.environ['SEQ_LOG_LEVEL']]
-    else:
-        SEQ_LOG_LEVEL = [None]
-        if 'STORE_IN_ENTRY' in os.environ:
-            STORE_IN_ENTRY = [os.environ['STORE_IN_ENTRY'] == 'True']
-        else:
-            STORE_IN_ENTRY = [False]
+    REGEX_LIST = [re.compile(generate_item_for(0, 'REGEX'))]
+    CUSTOM_PROPERTIES = [generate_item_for(0, 'REGEX_PROPERTY', lambda x: x.split('=', 1))]
+    OVERWRITE_WITH = [generate_item_for(0, 'OVERWRITE_CONTENTS')]
+    SEQ_LOG_LEVEL = [generate_item_for(0, 'SEQ_LOG_LEVEL')]
+    STORE_IN_ENTRY = [generate_item_for(0, 'STORE_IN_ENTRY', lambda x: x == 'True', False)]
+    DROP_ENTRIES = [generate_item_for(0, 'DROP_ENTRIES', lambda x: x == 'True', False)]
 else:
     REGEX_LIST = []
     CUSTOM_PROPERTIES = []
     OVERWRITE_WITH = []
     SEQ_LOG_LEVEL = []
     STORE_IN_ENTRY = []
+    DROP_ENTRIES = []
     for i in itertools.count(1):
         if f'REGEX{i}' in os.environ:
             regex = os.environ[f'REGEX{i}']
             logger.info(f'Loading regex {repr(regex)}')
             REGEX_LIST.append(re.compile(regex))
-            if f'REGEX_PROPERTY{i}' in os.environ:
-                CUSTOM_PROPERTIES.append(os.environ[f'REGEX_PROPERTY{i}'].split('=', 1))
-            else:
-                CUSTOM_PROPERTIES.append(None)
-
-            if 'OVERWRITE_CONTENTS' in os.environ:
-                OVERWRITE_WITH.append(os.environ['OVERWRITE_CONTENTS'])
-            elif f'OVERWRITE_CONTENTS{i}' in os.environ:
-                OVERWRITE_WITH.append(os.environ[f'OVERWRITE_CONTENTS{i}'])
-            else:
-                OVERWRITE_WITH.append(None)
-
-            if 'SEQ_LOG_LEVEL' in os.environ:
-                SEQ_LOG_LEVEL.append(os.environ['SEQ_LOG_LEVEL'])
-            elif f'SEQ_LOG_LEVEL{i}' in os.environ:
-                SEQ_LOG_LEVEL.append(os.environ[f'SEQ_LOG_LEVEL{i}'])
-            else:
-                SEQ_LOG_LEVEL.append(None)
-
-            if 'STORE_IN_ENTRY' in os.environ:
-                STORE_IN_ENTRY.append(os.environ['STORE_IN_ENTRY'] == 'True')
-            elif f'STORE_IN_ENTRY{i}' in os.environ:
-                STORE_IN_ENTRY.append(os.environ[f'STORE_IN_ENTRY{i}'] == 'True')
-            else:
-                STORE_IN_ENTRY = [False]
-
+            CUSTOM_PROPERTIES.append(generate_item_for(i, 'REGEX_PROPERTY', lambda x: x.split('=', 1)))
+            OVERWRITE_WITH.append(generate_item_for(i, 'OVERWRITE_CONTENTS'))
+            SEQ_LOG_LEVEL.append(generate_item_for(i, 'SEQ_LOG_LEVEL'))
+            STORE_IN_ENTRY.append(generate_item_for(i, 'STORE_IN_ENTRY', lambda x: x == 'True', False))
+            DROP_ENTRIES.append(generate_item_for(i, 'DROP_ENTRIES', lambda x: x == 'True', False))
         else:
             break
+
+
+logger.info(f'Proceeding with configuration of {REGEX_LIST} {CUSTOM_PROPERTIES} {OVERWRITE_WITH} {SEQ_LOG_LEVEL} {STORE_IN_ENTRY} {DROP_ENTRIES}')
+
+
+class NoMatchingRegex(Exception):
+    pass
 
 
 def transform_entry(entry):
@@ -96,11 +83,22 @@ def transform_entry(entry):
     message_field = entry[FIELD_TO_PARSE]
     total_entries.runtime(+1)
     i = 0
-    for regex, prop, overwrite_with, level_to, store_in_entry in zip(REGEX_LIST, CUSTOM_PROPERTIES, OVERWRITE_WITH, SEQ_LOG_LEVEL, STORE_IN_ENTRY):
+    for regex, prop, overwrite_with, level_to, store_in_entry, should_drop in zip(REGEX_LIST,
+                                                                                  CUSTOM_PROPERTIES,
+                                                                                  OVERWRITE_WITH,
+                                                                                  SEQ_LOG_LEVEL,
+                                                                                  STORE_IN_ENTRY,
+                                                                                  DROP_ENTRIES):
         i += 1
-        if match := regex.match(message_field):
+        logger.debug(f'Matching {repr(message_field)} against {regex.pattern}')
+        match = regex.match(message_field)
+        if match:
 
             matched_regexes.runtime(+1, regex=regex.pattern)
+
+            if should_drop:
+                entries_dropped.runtime(+1)
+                return
 
             if 'Properties' not in entry and not store_in_entry:
                 entry['Properties'] = {}
@@ -137,7 +135,7 @@ def transform_entry(entry):
             break
     else:
         matched_nothing.runtime(+1)
-        raise ValueError('No regex would match "%s"' % (message_field, ))
+        raise NoMatchingRegex('No regex would match "%s"' % (message_field, ))
 
     logger.debug(f'Successfully processed entry {entry}, matched regex {i}')
 
@@ -173,10 +171,16 @@ def ingest():
     new_entries = []
     for entry in entries:
         try:
-            new_entries.append(transform_entry(entry))
-        except ValueError as e:
+            v = transform_entry(entry)
+            if v is None:
+                continue
+            new_entries.append(v)
+        except NoMatchingRegex:
             logger.info('Error processing entry %s"', entry)
             new_entries.append(entry)
+
+    if not new_entries:
+        return {}
 
     # Prepare headers
     headers = {'Content-Type': 'application/vnd.serilog.clef'}
