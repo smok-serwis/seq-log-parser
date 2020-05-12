@@ -94,7 +94,7 @@ def transform_entry(entry):
         match = regex.match(message_field)
         if match:
 
-            matched_regexes.runtime(+1, regex=regex.pattern)
+            matched_regexes.runtime(+1, regex=regex.pattern, id=i)
 
             if should_drop:
                 entries_dropped.runtime(+1)
