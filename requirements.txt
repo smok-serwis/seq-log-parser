@@ -1,7 +1,7 @@
-flask
-requests
-werkzeug
-gevent
-flask_json
-satella>=2.7.22
-flask-satella-metrics
+flask==2.*
+requests==2.*
+werkzeug==2.*
+gevent==22.*
+flask_json==0.4.*
+satella==2.*
+flask-satella-metrics==1.*
